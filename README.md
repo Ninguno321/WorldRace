@@ -1,4 +1,4 @@
-# WorldRace
+# WordRace
 Juego en html
 
 Este es un juego en html que va de adivinar palabras en español.
