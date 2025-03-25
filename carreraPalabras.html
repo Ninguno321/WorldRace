@@ -1,0 +1,721 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Carrera de Palabras</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f0f0f0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            flex-direction: column;
+        }
+
+        .game-container {
+            text-align: center;
+            background-color: #fff;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+            width: 80%;
+            max-width: 800px;
+        }
+
+        .difficulty, .game, .word-input {
+            margin-bottom: 20px;
+        }
+
+        .track {
+            position: relative;
+            width: 100%;
+            height: 100px;
+            background-color: #e0e0e0;
+            margin: 20px 0;
+            border-radius: 10px;
+        }
+
+        #snail1 {
+            position: absolute;
+            left: 0;
+            top: 25%;
+            transform: translateY(-50%);
+            width: 50px;
+        }
+
+        #snail2 {
+            position: absolute;
+            left: 0;
+            top: 75%;
+            transform: translateY(-50%);
+            width: 50px;
+            display: none;
+        }
+
+        .word-input {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #grids {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: flex;
+            flex-direction: row;
+            gap: 5px;
+        }
+
+        .box {
+            width: 50px;
+            height: 50px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            border: 2px solid #ccc;
+            font-size: 24px;
+            cursor: pointer;
+            color: rgb(0, 0, 0);
+        }
+
+        .green {
+            background-color: #6aaa64;
+        }
+
+        .yellow {
+            background-color: #c9b458;
+        }
+
+        .gray {
+            background-color: #787c7e;
+        }
+
+        .confetti {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1000;
+            display: none; /* Inicialmente oculto */
+        }
+
+        #restart-button {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            padding: 15px 30px;
+            font-size: 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            cursor: pointer;
+            z-index: 1001;
+            display: none;
+        }
+
+        #timer {
+            font-size: 24px;
+            font-weight: bold;
+            margin-bottom: 10px;
+        }
+
+        #player-turn {
+            font-size: 18px;
+            font-weight: bold;
+            margin-bottom: 10px;
+            color: #333;
+        }
+
+        #player1-info {
+            color: #4CAF50;
+        }
+
+        #player2-info {
+            color: #2196F3;
+        }
+
+        .mode-selection {
+            margin-bottom: 20px;
+        }
+
+        .player-info {
+            display: flex;
+            justify-content: space-around;
+            width: 100%;
+            margin-bottom: 15px;
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>Carrera de Palabras</h1>
+        
+        <div class="mode-selection">
+            <label>Selecciona modo:</label>
+            <input type="radio" id="mode-single" name="game-mode" value="single" checked>
+            <label for="mode-single">Un jugador</label>
+            <input type="radio" id="mode-two" name="game-mode" value="two">
+            <label for="mode-two">Dos jugadores</label>
+        </div>
+        
+        <div class="difficulty">
+            <label for="difficulty">Elige la dificultad:</label>
+            <select id="difficulty">
+                <option value="easy">Fácil</option>
+                <option value="medium">Medio</option>
+                <option value="hard">Difícil</option>
+            </select>
+            <button id="start-game">Iniciar Juego</button>
+        </div>
+        
+        <div id="timer">Tiempo: 30</div>
+        <div id="player-turn">Turno del jugador: <span id="current-player">1</span></div>
+        
+        <div class="player-info">
+            <div id="player1-info">Jugador 1: 0 palabras</div>
+            <div id="player2-info" style="display: none;">Jugador 2: 0 palabras</div>
+        </div>
+        
+        <div class="game">
+            <div class="track">
+                <img src="https://i.pinimg.com/originals/55/fe/86/55fe86c4ccb76c19bf12fb9e7d9d70cf.png" alt="Caracol 1" id="snail1">
+                <img src="https://i.pinimg.com/originals/55/fe/86/55fe86c4ccb76c19bf12fb9e7d9d70cf.png" alt="Caracol 2" id="snail2" style="display: none;">                <div id="finish-line" style="position: absolute; right: 0; top: 0; bottom: 0; width: 10px; height: 100%; background-color: red;"></div>
+            </div>
+        </div>
+        <div class="word-input">
+            <div id="grids">
+                <!-- Grids will be generated here -->
+            </div>
+            <div id="category-display"></div>
+            <button id="skip-word">Saltar</button>
+        </div>
+    </div>
+    <button id="restart-button">¡Jugar de nuevo!</button>
+    <canvas id="confetti" class="confetti"></canvas>
+    <script>
+        // Categorías y palabras iniciales (se ampliarán con la API)
+        const categories = ["animales", "frutas", "países", "profesiones", "deportes", "colores"];
+        const words = {
+            animales: ["perro", "gato", "elefante", "jirafa", "leon", "tigre", "cebra", "conejo", "pajaro", "caballo", "vaca", "cerdo", "oveja", "mono", "rinoceronte", "hipopotamo", "serpiente", "cocodrilo", "tortuga", "lobo"],
+            frutas: ["manzana", "banana", "cereza", "durazno", "fresa", "naranja", "pera", "sandia", "melon", "piña", "uva", "kiwi", "mango", "papaya", "granada", "limon", "mandarina", "coco", "ciruela", "higo"],
+            países: ["argentina", "brasil", "chile", "dinamarca", "españa", "francia", "grecia", "holanda", "italia", "japon", "kenya", "luxemburgo", "mexico", "noruega", "portugal", "rusia", "suecia", "turquia", "uruguay", "venezuela"],
+            profesiones: ["medico", "profesor", "ingeniero", "abogado", "arquitecto", "programador", "enfermero", "policia", "bombero", "cocinero", "electricista", "carpintero", "mecanico", "dentista", "piloto", "taxista", "comerciante", "periodista", "actor", "musico"],
+            deportes: ["futbol", "baloncesto", "tenis", "natacion", "atletismo", "golf", "voleibol", "ciclismo", "boxeo", "karate", "hockey", "beisbol", "rugby", "patinaje", "esqui", "surf", "gimnasia", "halterofilia", "esgrima", "padel"],
+            colores: ["rojo", "azul", "verde", "amarillo", "negro", "blanco", "naranja", "morado", "rosa", "gris", "marron", "cyan", "dorado", "plateado", "turquesa", "violeta", "beige", "ocre", "indigo", "magenta"]
+        };
+
+        let currentCategory = "";
+        let currentLetter = "";
+        let currentWord = "";
+        let difficulty = "easy";
+        let snailPosition1 = 0;
+        let snailPosition2 = 0;
+        let currentRow = 0;
+        let currentBox = 0;
+        let maxAttempts = 4;
+        let wordsToWin = 0;
+        let wordsCorrect1 = 0;
+        let wordsCorrect2 = 0;
+        let gameMode = "single";
+        let currentPlayer = 1;
+        let timerValue = 30;
+        let timerInterval;
+        let confettiInterval;
+
+        // Función para filtrar palabras según dificultad
+        function getFilteredWords(category) {
+            const wordsInCategory = words[category];
+            
+            if (difficulty === "easy") {
+                // En modo fácil, solo usar palabras de 3-5 letras
+                const easyWords = wordsInCategory.filter(word => word.length <= 5);
+                
+                // Si hay palabras fáciles disponibles, usarlas
+                if (easyWords.length > 0) {
+                    return easyWords;
+                }
+            }
+            
+            // Si no es modo fácil o no hay palabras fáciles, usar todas
+            return wordsInCategory;
+        }
+        
+        function updateSnailAppearance() {
+            if (gameMode === "two") {
+                if (currentPlayer === 1) {
+                    // Es el turno del jugador 1, su caracol en color y el otro gris
+                    document.getElementById("snail1").style.filter = "none";
+                    document.getElementById("snail2").style.filter = "hue-rotate(240deg) grayscale(100%)";
+                } else {
+                    // Es el turno del jugador 2, su caracol en color y el otro gris
+                    document.getElementById("snail1").style.filter = "grayscale(100%)";
+                    document.getElementById("snail2").style.filter = "hue-rotate(240deg)";
+                }
+            }
+        }
+
+        // Simular la funcionalidad de la API de DRAE en JavaScript
+        async function loadWordsFromDRAE() {
+            try {
+                // Simulamos la carga de palabras desde una API
+                console.log("Cargando palabras adicionales...");
+                
+                // Esta es una implementación simulada que amplía nuestras categorías
+                // En un entorno real, aquí se conectaría con una API REST
+                const additionalWords = {
+                    "instrumentos": ["guitarra", "piano", "violin", "bateria", "flauta", "saxofon", "trompeta", "arpa", "acordeon", "clarinete"],
+                    "muebles": ["mesa", "silla", "sofa", "cama", "armario", "estanteria", "comoda", "escritorio", "taburete", "mecedora"],
+                    "herramientas": ["martillo", "destornillador", "sierra", "taladro", "alicate", "llave", "cincel", "tornillo", "clavos", "serrucho"],
+                    "ropa": ["camisa", "pantalon", "vestido", "falda", "zapatos", "calcetines", "corbata", "chaqueta", "abrigo", "sombrero"]
+                };
+                
+                // Añadir nuevas categorías al array de categorías
+                for (const category in additionalWords) {
+                    if (!categories.includes(category)) {
+                        categories.push(category);
+                    }
+                }
+                
+                // Añadir palabras adicionales
+                for (const category in additionalWords) {
+                    if (!words[category]) {
+                        words[category] = [];
+                    }
+                    
+                    // Añadir palabras nuevas evitando duplicados
+                    for (const word of additionalWords[category]) {
+                        if (!words[category].includes(word)) {
+                            words[category].push(word);
+                        }
+                    }
+                }
+                
+                console.log("Palabras cargadas con éxito");
+                console.log("Categorías disponibles:", categories);
+            } catch (error) {
+                console.error("Error al cargar palabras:", error);
+            }
+        }
+
+        // Cargar palabras cuando se inicia la página
+        window.onload = function() {
+            loadWordsFromDRAE();
+            document.getElementById("timer").style.display = "none";
+            document.getElementById("player-turn").style.display = "none";
+            document.getElementById("player1-info").style.display = "none";
+        };
+        
+        function startTimer() {
+            clearInterval(timerInterval);
+            timerValue = 20;
+            updateTimerDisplay();
+            
+            timerInterval = setInterval(() => {
+                timerValue--;
+                updateTimerDisplay();
+                
+                if (timerValue <= 0) {
+                    clearInterval(timerInterval);
+                    // Cambiar turno si se acaba el tiempo
+                    if (gameMode === "two") {
+                        switchPlayer();
+                    } else {
+                        skipWord();
+                    }
+                }
+            }, 1000);
+        }
+        
+        function updateTimerDisplay() {
+            document.getElementById("timer").textContent = "Tiempo: " + timerValue;
+        }
+        
+        function extendTimer() {
+            timerValue += 3; // Añadir 3 segundos al acertar una palabra
+            updateTimerDisplay();
+        }
+        
+        function switchPlayer() {
+            currentPlayer = currentPlayer === 1 ? 2 : 1;
+            document.getElementById("current-player").textContent = currentPlayer;
+            currentRow = 0;
+            currentBox = 0;
+            updateSnailAppearance(); // Actualizar apariencia de caracoles
+            nextWord();
+            startTimer();
+        }
+        
+        function updatePlayerInfo() {
+            document.getElementById("player1-info").textContent = "Jugador 1: " + wordsCorrect1 + " palabras";
+            if (gameMode === "two") {
+                document.getElementById("player2-info").textContent = "Jugador 2: " + wordsCorrect2 + " palabras";
+            }
+        }
+
+        function startGame() {
+            gameMode = document.querySelector('input[name="game-mode"]:checked').value;
+            difficulty = document.getElementById("difficulty").value;
+            snailPosition1 = 0;
+            snailPosition2 = 0;
+            currentRow = 0;
+            currentBox = 0;
+            wordsCorrect1 = 0;
+            wordsCorrect2 = 0;
+            currentPlayer = 1;
+            
+            // Configurar interfaz según el modo
+            if (gameMode === "two") {
+                document.getElementById("snail2").style.display = "block";
+                document.getElementById("timer").style.display = "block";
+                document.getElementById("player-turn").style.display = "block";
+                document.getElementById("player1-info").style.display = "block";
+                document.getElementById("player2-info").style.display = "block";
+            } else {
+                document.getElementById("snail2").style.display = "none";
+                document.getElementById("timer").style.display = "none";
+                document.getElementById("player-turn").style.display = "none";
+                document.getElementById("player1-info").style.display = "none";
+                document.getElementById("player2-info").style.display = "none";
+            }
+            
+            // Ocultar el botón de reinicio si está visible
+            document.getElementById("restart-button").style.display = "none";
+            
+            // Set words needed to win based on difficulty
+            if (difficulty === "easy") {
+                wordsToWin = 5;
+            } else if (difficulty === "medium") {
+                wordsToWin = 10;
+            } else {
+                wordsToWin = 15;
+            }
+            
+            document.getElementById("snail1").style.left = "0px";
+            document.getElementById("snail2").style.left = "0px";
+            
+            // Añadir esta línea
+            updateSnailAppearance();
+            
+            updatePlayerInfo();
+            nextWord();
+            
+            if (gameMode === "two") {
+                startTimer();
+            }
+        }
+
+        function nextWord() {
+            currentRow = 0;
+            currentBox = 0;
+            
+            const categoryIndex = Math.floor(Math.random() * categories.length);
+            currentCategory = categories[categoryIndex];
+            
+            // Usar la nueva función para obtener palabras filtradas
+            const filteredWords = getFilteredWords(currentCategory);
+            const wordIndex = Math.floor(Math.random() * filteredWords.length);
+            currentWord = filteredWords[wordIndex].toUpperCase();
+            
+            document.getElementById("category-display").innerText = "Categoría: " + currentCategory;
+            document.getElementById("grids").innerHTML = "";
+            createGrids();
+            
+            console.log("Palabra actual: " + currentWord); // Para debugging
+        }
+
+        function createGrids() {
+            const gridsContainer = document.getElementById('grids');
+            
+            for (let i = 0; i < maxAttempts; i++) {
+                const grid = document.createElement('div');
+                grid.classList.add('grid');
+                grid.id = 'grid' + i;
+                
+                for (let j = 0; j < currentWord.length; j++) {
+                    const box = document.createElement('div');
+                    box.classList.add('box');
+                    box.id = 'box' + i + j;
+                    box.addEventListener('click', () => setCurrentBox(i, j));
+                    grid.appendChild(box);
+                }
+                
+                gridsContainer.appendChild(grid);
+            }
+        }
+
+        function setCurrentBox(row, box) {
+            if (row === currentRow) {
+                currentBox = box;
+            }
+        }
+
+        function handleKeyPress(event) {
+            const key = event.key.toUpperCase();
+            
+            if (key.match(/[A-Z]/) && key.length === 1) {
+                if (currentBox < currentWord.length) {
+                    const box = document.getElementById('box' + currentRow + currentBox);
+                    box.textContent = key;
+                    currentBox++;
+                }
+            } else if (key === 'BACKSPACE') {
+                if (currentBox > 0) {
+                    currentBox--;
+                    const box = document.getElementById('box' + currentRow + currentBox);
+                    box.textContent = '';
+                }
+            } else if (key === 'ENTER') {
+                checkWord();
+            }
+        }
+
+        function checkWord() {
+            // Collect the letters from the current row
+            const userWordArray = [];
+            for (let i = 0; i < currentWord.length; i++) {
+                const box = document.getElementById('box' + currentRow + i);
+                userWordArray.push(box.textContent || '');
+            }
+            
+            const userWord = userWordArray.join('');
+            
+            // Check if the word is complete
+            if (userWord.length !== currentWord.length) {
+                alert("La palabra debe tener " + currentWord.length + " letras.");
+                return;
+            }
+            
+            // Color the boxes
+            colorBoxes(userWordArray);
+            
+            // Check if word is correct
+            if (userWord === currentWord) {
+                // Incrementar contador para el jugador actual
+                if (gameMode === "two") {
+                    if (currentPlayer === 1) {
+                        wordsCorrect1++;
+                    } else {
+                        wordsCorrect2++;
+                    }
+                } else {
+                    wordsCorrect1++;
+                }
+                
+                updatePlayerInfo();
+                advanceSnail();
+                
+                // Comprobar si el jugador ha ganado
+                if ((currentPlayer === 1 && wordsCorrect1 >= wordsToWin) || 
+                    (currentPlayer === 2 && wordsCorrect2 >= wordsToWin) ||
+                    (gameMode === "single" && wordsCorrect1 >= wordsToWin)) {
+                    showWinScreen();
+                    return;
+                }
+                
+                // Si es modo dos jugadores, extender el tiempo
+                if (gameMode === "two") {
+                    extendTimer();
+                }
+                
+                // Dar una nueva palabra
+                setTimeout(nextWord, 500);
+            } else {
+                // Move to next row
+                currentRow++;
+                currentBox = 0;
+                
+                // If out of attempts
+                if (currentRow >= maxAttempts) {
+                    alert("Lo siento, has agotado tus intentos. La palabra correcta era " + currentWord + ".");
+                    
+                    if (gameMode === "two") {
+                        switchPlayer();
+                    } else {
+                        setTimeout(nextWord, 500);
+                    }
+                }
+            }
+        }
+
+        function colorBoxes(userWordArray) {
+            // Create a copy of currentWord for tracking remaining letters
+            const remainingLetters = currentWord.split('');
+            
+            // First pass: mark green (correct position)
+            for (let i = 0; i < userWordArray.length; i++) {
+                const box = document.getElementById('box' + currentRow + i);
+                const userLetter = userWordArray[i];
+                
+                if (userLetter === currentWord[i]) {
+                    box.classList.add('green');
+                    // Remove this letter from remaining letters
+                    remainingLetters[i] = null;
+                }
+            }
+            
+            // Second pass: mark yellow or gray
+            for (let i = 0; i < userWordArray.length; i++) {
+                const box = document.getElementById('box' + currentRow + i);
+                const userLetter = userWordArray[i];
+                
+                // Skip already marked green boxes
+                if (box.classList.contains('green')) {
+                    continue;
+                }
+                
+                // Check if letter exists in remaining letters
+                const letterIndex = remainingLetters.indexOf(userLetter);
+                if (letterIndex !== -1) {
+                    box.classList.add('yellow');
+                    // Remove this letter from remaining letters
+                    remainingLetters[letterIndex] = null;
+                } else {
+                    box.classList.add('gray');
+                }
+            }
+        }
+
+        function advanceSnail() {
+            const trackWidth = document.querySelector(".track").offsetWidth - 60;
+            const step = trackWidth / wordsToWin;
+            
+            if (gameMode === "two") {
+                if (currentPlayer === 1) {
+                    snailPosition1 += step;
+                    document.getElementById("snail1").style.left = snailPosition1 + "px";
+                } else {
+                    snailPosition2 += step;
+                    document.getElementById("snail2").style.left = snailPosition2 + "px";
+                }
+            } else {
+                snailPosition1 += step;
+                document.getElementById("snail1").style.left = snailPosition1 + "px";
+            }
+        }
+
+        function skipWord() {
+            // Penalize skipping by moving snail backward
+            const trackWidth = document.querySelector(".track").offsetWidth - 60;
+            const step = trackWidth / wordsToWin / 2; // Half a step back
+            
+            if (gameMode === "two") {
+                if (currentPlayer === 1) {
+                    snailPosition1 = Math.max(0, snailPosition1 - step);
+                    document.getElementById("snail1").style.left = snailPosition1 + "px";
+                    switchPlayer();
+                } else {
+                    snailPosition2 = Math.max(0, snailPosition2 - step);
+                    document.getElementById("snail2").style.left = snailPosition2 + "px";
+                    switchPlayer();
+                }
+            } else {
+                snailPosition1 = Math.max(0, snailPosition1 - step);
+                document.getElementById("snail1").style.left = snailPosition1 + "px";
+                nextWord();
+            }
+        }
+
+        function showWinScreen() {
+            clearInterval(timerInterval);
+            showConfetti();
+            
+            // Mostrar el botón de reinicio inmediatamente sin alerta
+            const restartButton = document.getElementById("restart-button");
+            restartButton.style.display = "block";
+            restartButton.style.zIndex = "2000"; // Asegurar que esté por encima de todo
+            restartButton.focus();
+        }
+
+        // Reemplaza la función showConfetti existente con esta versión mejorada
+        function showConfetti() {
+            console.log("Iniciando confeti");
+            const confetti = document.getElementById("confetti");
+            const ctx = confetti.getContext("2d");
+            
+            // Asegurarnos que el canvas ocupe toda la pantalla
+            confetti.width = window.innerWidth;
+            confetti.height = window.innerHeight;
+            confetti.style.display = "block"; // Asegurar que esté visible
+            
+            const particles = [];
+            const particleCount = 300;
+            
+            // Crear partículas
+            for (let i = 0; i < particleCount; i++) {
+                particles.push({
+                    x: Math.random() * confetti.width,
+                    y: Math.random() * confetti.height - confetti.height,
+                    r: Math.random() * 4 + 1,
+                    d: Math.random() * particleCount,
+                    color: `rgba(${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, ${Math.floor(Math.random() * 255)}, 0.8)`,
+                    tilt: Math.random() * 10 - 10,
+                    speed: Math.random() * 2 + 1
+                });
+            }
+            
+            // Función para dibujar el confeti
+            function draw() {
+                ctx.clearRect(0, 0, confetti.width, confetti.height);
+                
+                particles.forEach(p => {
+                    ctx.beginPath();
+                    ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2, true);
+                    ctx.fillStyle = p.color;
+                    ctx.fill();
+                });
+                
+                update();
+            }
+            
+            // Función para actualizar la posición de las partículas
+            function update() {
+                particles.forEach(p => {
+                    p.y += p.speed;
+                    p.x += Math.sin(p.d) * 0.5;
+                    
+                    // Resetear partículas cuando llegan al fondo
+                    if (p.y > confetti.height) {
+                        p.y = -10;
+                        p.x = Math.random() * confetti.width;
+                    }
+                });
+            }
+            
+            // Iniciar la animación y guardar su referencia para poder detenerla después
+            confettiInterval = setInterval(draw, 20);
+            console.log("Confeti iniciado con intervalo:", confettiInterval);
+        }
+        
+        function stopConfetti() {
+            console.log("Deteniendo confeti, intervalo:", confettiInterval);
+            clearInterval(confettiInterval);
+            const confetti = document.getElementById("confetti");
+            const ctx = confetti.getContext("2d");
+            ctx.clearRect(0, 0, confetti.width, confetti.height);
+            confetti.style.display = "none"; // Ocultarlo cuando termina
+            }
+
+        document.getElementById("start-game").addEventListener("click", startGame);
+        document.addEventListener('keydown', handleKeyPress);
+        document.getElementById("skip-word").addEventListener("click", skipWord);
+        document.getElementById("restart-button").addEventListener("click", function() {
+            stopConfetti();
+            startGame();
+        });
+    </script>
+</body>
+</html>
